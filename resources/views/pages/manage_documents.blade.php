@@ -1,0 +1,197 @@
+@extends('layouts.app', ['activePage' => 'manage_documents', 'titlePage' => __('Master Data')])
+
+@section('content')
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link href="{{ asset('material') }}/css/dataTables/buttons.dataTables.min.css" rel="stylesheet">
+<link href="{{ asset('material') }}/css/dataTables/jquery.dataTables.min.css" rel="stylesheet">
+<script src="{{ asset('material') }}/js/core/jquery-3.5.1.js"></script>
+<script src="{{ asset('material') }}/js/plugins/jquery.dataTables.min.js"></script>
+<script src="{{ asset('material') }}/js/plugins/dataTables.buttons.min.js"></script>
+<script src="{{ asset('material') }}/js/plugins/jszip.min.js"></script>
+<script src="{{ asset('material') }}/js/plugins/pdfmake.min.js"></script>
+<script src="{{ asset('material') }}/js/plugins/vfs_fonts.js"></script>
+<script src="{{ asset('material') }}/js/plugins/buttons.html5.min.js"></script>
+<script>
+error=false
+
+function validate()
+{
+if(document.docForm.eCode.value !='' && document.docForm.eName.value !='' )
+document.docForm.dibtnsavesabled=false
+else
+document.docForm.btnsave.disabled=true
+}
+</script>
+</head>
+@if ($errors->any())
+<div class="alert alert-danger">
+    <ul>
+        @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+<body>
+    <div class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header card-header-primary" style="background: #fdcdcd;padding-bottom: 0px;">
+                            <div class="row">
+                                <p class="card-category col-sm-8"></p>
+                                <div class="form-group text-right col-sm-4">
+                                    <div class="pull-right">
+                                        <a class="btn mb-2" id="new-doc" data-toggle="modal" style="border-radius: 1.2rem;">
+                                            <i class="material-icons">add</i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover table-condensed data-table" style="text-align: center;width:100%">
+                                    <thead>
+                                        <tr>
+                                        <td style="width:10%">No.</td>
+                                        <td style="width:10%">Id</td>
+                                        <td style="width:40%">Name</td>
+                                        <td style="width:15%">Create Date</td>
+                                        <td style="width:15%">Update Date</td>
+                                        <td style="width:10%">Action</td>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="crud-modal" aria-hidden="true" >
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="docCrudModal"></h4>
+                </div>
+                <div class="modal-body">
+                    <form name="docForm" action="{{ route('manage.store') }}" method="POST">
+                        <input type="hidden" name="doc_id" id="doc_id" >
+                        @csrf
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12 col-md-12">
+                                <div class="form-group">
+                                    <strong>Id:</strong>
+                                    <input type="text" name="eCode" id="eCode" class="form-control" placeholder="new id" value="" required>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-12 col-md-12">
+                                <div class="form-group">
+                                    <strong>Master:</strong>
+                                    <input type="text" name="eName" id="eName" class="form-control" placeholder="new master" required>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-12 col-md-12 text-center">
+                                <button type="submit" id="btn-save" name="btnsave" class="btn btn-primary">Save</button>
+                                <a href="{{ route('manage.index') }}" class="btn btn-danger">Cancel</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script type="text/javascript">
+    $(document).ready(function () {
+
+    var table = $('.data-table').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: "{{ route('manage.index') }}",
+        columns: [
+            { "data": "DT_RowIndex" },
+            { "data": "eCode" },
+            { "data": "eName" },
+            {
+                "data": "created_at",
+                "render": function (data) {
+                var datePart = data.match(/\d+/g),
+                    year = datePart[0], // get only two digits
+                    month = datePart[1],
+                    day = datePart[2];
+                    return day+'/'+month+'/'+year;
+                    }
+                },
+                {
+                "data": "updated_at",
+                "render": function (data) {
+                var datePart = data.match(/\d+/g),
+                    year = datePart[0], // get only two digits
+                    month = datePart[1],
+                    day = datePart[2];
+                    return day+'/'+month+'/'+year;
+                    }
+                },
+            { "data": "action" , orderable: false, searchable: false},
+        ]
+    });
+    /* When click New Doc button */
+    $('#new-doc').click(function () {
+        $('#btn-save').val("create-doc");
+        $('#doc').trigger("reset");
+        $('#docCrudModal').html("New Master Data");
+        $('#crud-modal').modal('show');
+    });
+
+    /* Edit Doc */
+    $('body').on('click', '#edit-doc', function () {
+    var doc_id = $(this).data("id");
+    $.get("/manage/" +doc_id+ "/edit", function (data) {
+        $('#docCrudModal').html("Edit Master Data");
+        $('#btn-update').val("Update");
+        $('#btn-save').prop('disabled',false);
+        $('#crud-modal').modal('show');
+        $('#eCode').val(data.eCode);
+        $('#eName').val(data.eName);
+        })
+    });
+
+    /* Delete Doc */
+    $('body').on('click', '#delete-doc', function () {
+        var doc_id = $(this).data("id");
+        var token = $("meta[name='csrf-token']").attr("content");
+            if(confirm("Confirm Delete!")) {
+                $.ajax({
+                type: "DELETE",
+                url: "../manage/"+doc_id,
+                data: {
+                "id": doc_id,
+                "_token": token,
+                },
+                success: function (data) {
+                    table.ajax.reload();
+                },
+                error: function (data) {
+                    console.log('Error:', data);
+                }
+                });
+            }
+            else
+            {
+                return false;
+            };
+        });
+    });
+
+    </script>
+    @endsection
+
+
